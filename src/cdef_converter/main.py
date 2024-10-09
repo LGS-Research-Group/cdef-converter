@@ -2,6 +2,7 @@ import multiprocessing
 import time
 from multiprocessing import Manager
 from pathlib import Path
+from queue import Queue
 from typing import Any
 
 from rich.console import Console
@@ -12,12 +13,12 @@ from cdef_converter.config import DEFAULT_ENCODING_CHUNK_SIZE, GREEN, OUTPUT_DIR
 from cdef_converter.file_processing import process_file
 from cdef_converter.logging_config import log, logger
 from cdef_converter.progress import display_progress
-from cdef_converter.utils import print_summary_table, save_summary
+from cdef_converter.utils import save_summary
 
 console = Console()
 
 
-def process_file_wrapper(args):
+def process_file_wrapper(args: tuple[Path, Queue[Any], int]) -> None:
     file_path, progress_queue, encoding_chunk_size = args
     return process_file(file_path, progress_queue, encoding_chunk_size)
 
@@ -33,22 +34,15 @@ def process_files_with_progress(
 
     with multiprocessing.Pool(processes=num_processes) as pool:
         progress_display = multiprocessing.Process(
-            target=display_progress, args=(progress_queue, len(files))
+            target=display_progress, args=(progress_queue, len(files), summary)
         )
         progress_display.start()
 
-        results = pool.map(
+        pool.map(
             process_file_wrapper, [(file, progress_queue, encoding_chunk_size) for file in files]
         )
 
         progress_display.join()
-
-    for result in results:
-        if result:
-            register_name, year, data = result
-            if register_name not in summary:
-                summary[register_name] = {}
-            summary[register_name][year or register_name] = data
 
 
 def main(
@@ -73,13 +67,29 @@ def main(
 
         summary: dict[str, dict[str, Any]] = {}
 
+        with Manager() as manager:
+            progress_queue = manager.Queue()
+
+            with multiprocessing.Pool(processes=num_processes) as pool:
+                progress_display = multiprocessing.Process(
+                    target=display_progress, args=(progress_queue, len(files), summary)
+                )
+                progress_display.start()
+
+                pool.map(
+                    process_file_wrapper,
+                    [(file, progress_queue, encoding_chunk_size) for file in files],
+                )
+
+                progress_display.join()
+
         process_files_with_progress(files, summary, num_processes, encoding_chunk_size)
         end_time = time.time()
         total_time = end_time - start_time
         log(f"Total processing time: {total_time:.2f} seconds")
         log(f"Average time per file: {total_time / len(files):.2f} seconds")
 
-        console.print(print_summary_table(summary))
+        # console.print(print_summary_table(summary))
 
         summary_file = OUTPUT_DIRECTORY / "register_summary.json"
         save_summary(summary, summary_file)

@@ -1,5 +1,5 @@
 from .cli import run_convert
 
 
-def main():
+def main() -> None:
     run_convert()

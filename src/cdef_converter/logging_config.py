@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
+from typing import Any
 
 from rich import print as rprint
 from rich.console import Console
 from rich.logging import RichHandler
 
 
-def setup_logging():
+def setup_logging() -> tuple[logging.Logger, Console]:
     console = Console()
 
     log_dir = Path("logs")
@@ -34,6 +35,7 @@ def setup_logging():
 
 logger, console = setup_logging()
 
-def log(message, level="info", **kwargs):
+
+def log(message: str, level: str = "info", **kwargs: Any) -> None:
     getattr(logger, level)(message)
     rprint(f"[{level.upper()}] {message}", **kwargs)

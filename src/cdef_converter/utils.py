@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from rich import box
-from rich.panel import Panel
 from rich.table import Table
 
 from cdef_converter.logging_config import log
@@ -25,7 +24,7 @@ def save_summary(summary: dict[str, Any], output_file: Path) -> None:
         log(f"Error saving summary to {output_file}: {e}")
 
 
-def print_summary_table(summary: dict[str, Any]) -> Panel:
+def create_summary_table(summary: dict[str, Any]) -> Table:
     table = Table(
         title="Processing Summary", show_header=True, header_style="bold magenta", box=box.ROUNDED
     )
@@ -59,11 +58,10 @@ def print_summary_table(summary: dict[str, Any]) -> Panel:
             style="on dark_green",
         )
 
-    return Panel(table, title="Processing Summary", expand=False, border_style="blue")
+    return table
 
 
-
-def create_status_table(process_status):
+def create_status_table(process_status: dict[str, tuple[str, str]]) -> Table:
     table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
     table.add_column("Process", style="cyan", no_wrap=True)
     table.add_column("Current File", style="green")

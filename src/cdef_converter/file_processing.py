@@ -82,7 +82,6 @@ def read_file(
             raise FileProcessingError(f"Unsupported file format: {file_path.suffix}")
     except Exception as err:
         raise FileProcessingError(f"Error reading file {file_path.name}") from err
-    return pl.DataFrame()
 
 
 def write_parquet_fast(df: pl.DataFrame, path: Path) -> None:
@@ -97,7 +96,7 @@ def process_file(
     file_path: Path,
     progress_queue: Queue[Any],
     encoding_chunk_size: int = DEFAULT_ENCODING_CHUNK_SIZE,
-) -> tuple[str, str, dict[str, Any]] | None:
+) -> None:
     try:
         file_stem = file_path.stem
 
@@ -122,7 +121,43 @@ def process_file(
             else:
                 log(f"Skipping already processed file: {file_path}")
                 df = pl.read_parquet(output_path)
-                return (
+                progress_queue.put(
+                    (
+                        multiprocessing.current_process().name,
+                        file_path.name,
+                        "Completed",
+                        (
+                            register_name,
+                            year,
+                            {
+                                "file_name": file_path.name,
+                                "num_rows": len(df),
+                                "num_columns": len(df.columns),
+                                "column_names": df.columns,
+                            },
+                        ),
+                    )
+                )
+                return
+
+        progress_queue.put(
+            (multiprocessing.current_process().name, file_path.name, "Processing", None)
+        )
+        df = read_file(file_path, encoding_chunk_size)
+        write_parquet_fast(df, output_path)
+
+        read_back_df = pl.read_parquet(output_path)
+        if not df.equals(read_back_df):
+            raise ValueError("Verification failed: written data does not match original data")
+
+        log_message = f"Processed {file_path.name} -> {output_path}"
+
+        progress_queue.put(
+            (
+                multiprocessing.current_process().name,
+                file_path.name,
+                "Completed",
+                (
                     register_name,
                     year,
                     {
@@ -131,35 +166,14 @@ def process_file(
                         "num_columns": len(df.columns),
                         "column_names": df.columns,
                     },
-                )
-
-        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Processing"))
-        df = read_file(file_path, encoding_chunk_size)
-        write_parquet_fast(df, output_path)
-        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Completed"))
-
-        read_back_df = pl.read_parquet(output_path)
-        if not df.equals(read_back_df):
-            raise ValueError("Verification failed: written data does not match original data")
-
-        log(f"Processed {file_path.name} -> {output_path}")
-
-        return (
-            register_name,
-            year,
-            {
-                "file_name": file_path.name,
-                "num_rows": len(df),
-                "num_columns": len(df.columns),
-                "column_names": df.columns,
-            },
+                ),
+                log_message,
+            )
         )
 
     except (FileProcessingError, EncodingDetectionError, ParquetWriteError) as e:
-        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Error"))
+        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Error", None))
         logger.exception(f"Error processing file {file_path}: {str(e)}")
-        return None
     except Exception as e:
-        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Error"))
+        progress_queue.put((multiprocessing.current_process().name, file_path.name, "Error", None))
         logger.exception(f"Unexpected error processing file {file_path}: {str(e)}")
-        return None

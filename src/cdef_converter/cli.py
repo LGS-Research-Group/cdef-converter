@@ -41,7 +41,7 @@ def convert(
             help="Recursively search for files in subdirectories",
         ),
     ] = False,
-):
+) -> None:
     """
     Convert CSV/Parquet files to Parquet format and generate a summary.
 
@@ -65,5 +65,5 @@ def convert(
     main(input_directory, processes, encoding_chunk_size_bytes, recursive)
 
 
-def run_convert():
+def run_convert() -> None:
     app()
