@@ -13,7 +13,7 @@ from cdef_converter.config import DEFAULT_ENCODING_CHUNK_SIZE, GREEN, OUTPUT_DIR
 from cdef_converter.file_processing import process_file
 from cdef_converter.logging_config import log, logger
 from cdef_converter.progress import display_progress
-from cdef_converter.utils import save_summary
+from cdef_converter.utils import create_summary_table, save_summary
 
 console = Console()
 
@@ -76,6 +76,8 @@ def main(
         summary: dict[str, dict[str, Any]] = {}
 
         process_files_with_progress(files, summary, num_processes, encoding_chunk_size)
+        # Print summary after processing
+        console.print(create_summary_table(summary))
 
         end_time = time.time()
         total_time = end_time - start_time

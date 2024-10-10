@@ -150,8 +150,6 @@ def process_file(
         if not df.equals(read_back_df):
             raise ValueError("Verification failed: written data does not match original data")
 
-        log_message = f"Processed {file_path.name} -> {output_path}"
-
         progress_queue.put(
             (
                 multiprocessing.current_process().name,
@@ -167,7 +165,6 @@ def process_file(
                         "column_names": df.columns,
                     },
                 ),
-                log_message,
             )
         )
 
