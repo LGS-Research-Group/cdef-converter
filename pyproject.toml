@@ -1,6 +1,6 @@
 [project]
 name = "cdef-converter"
-version = "0.4.0"
+version = "0.5.0"
 description = "Add your description here"
 authors = [
     { name = "Tobias Kragholm", email = "50784887+tkragholm@users.noreply.github.com" },
