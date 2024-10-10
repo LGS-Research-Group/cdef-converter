@@ -38,10 +38,18 @@ def process_files_with_progress(
         )
         progress_display.start()
 
-        pool.map(
-            process_file_wrapper, [(file, progress_queue, encoding_chunk_size) for file in files]
-        )
+        # Use apply_async instead of map
+        results = [
+            pool.apply_async(process_file_wrapper, ((file, progress_queue, encoding_chunk_size),))
+            for file in files
+        ]
 
+        # Wait for all processes to complete
+        for result in results:
+            result.get()
+
+        # Signal the progress display process to finish
+        progress_queue.put(None)
         progress_display.join()
 
 
@@ -67,29 +75,12 @@ def main(
 
         summary: dict[str, dict[str, Any]] = {}
 
-        with Manager() as manager:
-            progress_queue = manager.Queue()
-
-            with multiprocessing.Pool(processes=num_processes) as pool:
-                progress_display = multiprocessing.Process(
-                    target=display_progress, args=(progress_queue, len(files), summary)
-                )
-                progress_display.start()
-
-                pool.map(
-                    process_file_wrapper,
-                    [(file, progress_queue, encoding_chunk_size) for file in files],
-                )
-
-                progress_display.join()
-
         process_files_with_progress(files, summary, num_processes, encoding_chunk_size)
+
         end_time = time.time()
         total_time = end_time - start_time
         log(f"Total processing time: {total_time:.2f} seconds")
         log(f"Average time per file: {total_time / len(files):.2f} seconds")
-
-        # console.print(print_summary_table(summary))
 
         summary_file = OUTPUT_DIRECTORY / "register_summary.json"
         save_summary(summary, summary_file)

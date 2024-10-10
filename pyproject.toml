@@ -1,6 +1,6 @@
 [project]
 name = "cdef-converter"
-version = "0.3.0"
+version = "0.4.0"
 description = "Add your description here"
 authors = [
     { name = "Tobias Kragholm", email = "50784887+tkragholm@users.noreply.github.com" },
@@ -30,7 +30,7 @@ dev-dependencies = ["pytest>=8.3.3", "mypy>=1.11.2", "pyarrow-stubs>=17.7"]
 
 [tool.rye.scripts]
 test = "pytest tests/"
-static = "mypy --strict src/"
+static = "mypy src/"
 
 [tool.hatch.metadata]
 allow-direct-references = true

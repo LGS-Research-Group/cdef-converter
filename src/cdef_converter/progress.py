@@ -44,7 +44,10 @@ def display_progress(progress_queue: Queue[Any], total_files: int, summary: dict
             while completed_files < total_files:
                 current_time = time.time()
                 while not progress_queue.empty():
-                    process_name, file_name, status, result, log_message = progress_queue.get()
+                    item = progress_queue.get()
+                    if item is None:  # Termination signal
+                        return
+                    process_name, file_name, status, result, log_message = item
                     process_status[process_name] = (file_name, status)
                     if status == "Completed":
                         completed_files += 1
